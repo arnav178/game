@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Guessing Game</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="card">
+    <h1>🎯 Number Guessing Game</h1>
+    <p class="subtitle">I'm thinking of a number between {{ min_number }} and {{ max_number }}.</p>
+
+    <p>Attempts left: <span id="attempts">{{ attempts_left }}</span></p>
+
+    <div class="guess-row">
+      <input type="number" id="guessInput" min="{{ min_number }}" max="{{ max_number }}" placeholder="Enter your guess">
+      <button id="guessBtn">Guess</button>
+    </div>
+
+    <p id="message" class="message"></p>
+
+    <button id="newGameBtn" class="secondary">🔄 New Game</button>
+
+    <h3>History</h3>
+    <ul id="history">
+      {% for item in history %}
+        <li class="{{ item.result }}">Guessed {{ item.guess }} — {{ item.result }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
