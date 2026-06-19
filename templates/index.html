@@ -8,26 +8,46 @@
 </head>
 <body>
   <div class="card">
-    <h1>🎯 Number Guessing Game</h1>
-    <p class="subtitle">I'm thinking of a number between {{ min_number }} and {{ max_number }}.</p>
 
-    <p>Attempts left: <span id="attempts">{{ attempts_left }}</span></p>
-
-    <div class="guess-row">
-      <input type="number" id="guessInput" min="{{ min_number }}" max="{{ max_number }}" placeholder="Enter your guess">
-      <button id="guessBtn">Guess</button>
+    <!-- DIFFICULTY SCREEN: shown first, before any game has started -->
+    <div id="difficultyScreen" class="{{ 'hidden' if has_active_game else '' }}">
+      <h1>🎯 Number Guessing Game</h1>
+      <p class="subtitle">Choose a difficulty to begin.</p>
+      <div class="difficulty-options">
+        {% for key, d in difficulties.items() %}
+          <button class="difficulty-btn" data-difficulty="{{ key }}">{{ d.label }}</button>
+        {% endfor %}
+      </div>
     </div>
 
-    <p id="message" class="message"></p>
+    <!-- GAME SCREEN: shown once a difficulty has been picked -->
+    <div id="gameScreen" class="{{ '' if has_active_game else 'hidden' }}">
+      <h1>🎯 Number Guessing Game</h1>
+      <p class="subtitle" id="rangeText">
+        {% if min_number and max_number %}
+          I'm thinking of a number between {{ min_number }} and {{ max_number }}.
+        {% endif %}
+      </p>
 
-    <button id="newGameBtn" class="secondary">🔄 New Game</button>
+      <p>Attempts left: <span id="attempts">{{ attempts_left }}</span></p>
 
-    <h3>History</h3>
-    <ul id="history">
-      {% for item in history %}
-        <li class="{{ item.result }}">Guessed {{ item.guess }} — {{ item.result }}</li>
-      {% endfor %}
-    </ul>
+      <div class="guess-row">
+        <input type="number" id="guessInput" min="{{ min_number }}" max="{{ max_number }}" placeholder="Enter your guess">
+        <button id="guessBtn">Guess</button>
+      </div>
+
+      <p id="message" class="message"></p>
+
+      <button id="newGameBtn" class="secondary">🔄 Change Difficulty</button>
+
+      <h3>History</h3>
+      <ul id="history">
+        {% for item in history %}
+          <li class="{{ item.result }}">Guessed {{ item.guess }} — {{ item.result }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>

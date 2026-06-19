@@ -7,31 +7,43 @@ app = Flask(__name__)
 # In production, this comes from an environment variable (set on Render).
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 
-MIN_NUMBER = 1
-MAX_NUMBER = 100
-MAX_ATTEMPTS = 7
+# Each difficulty defines its own range and attempt budget.
+DIFFICULTIES = {
+    "easy":   {"min": 1, "max": 50,  "attempts": 10, "label": "Easy (1–50, 10 tries)"},
+    "medium": {"min": 1, "max": 100, "attempts": 7,  "label": "Medium (1–100, 7 tries)"},
+    "hard":   {"min": 1, "max": 200, "attempts": 6,  "label": "Hard (1–200, 6 tries)"},
+}
+DEFAULT_DIFFICULTY = "medium"
 
 
-def start_new_game():
-    """Resets the game state stored in the user's session."""
-    session["target"] = random.randint(MIN_NUMBER, MAX_NUMBER)
-    session["attempts_left"] = MAX_ATTEMPTS
+def start_new_game(difficulty):
+    """Resets the game state stored in the user's session for the chosen difficulty."""
+    if difficulty not in DIFFICULTIES:
+        difficulty = DEFAULT_DIFFICULTY
+
+    config = DIFFICULTIES[difficulty]
+    session["difficulty"] = difficulty
+    session["min_number"] = config["min"]
+    session["max_number"] = config["max"]
+    session["target"] = random.randint(config["min"], config["max"])
+    session["attempts_left"] = config["attempts"]
     session["game_over"] = False
     session["history"] = []  # list of past guesses, for display
 
 
 @app.route("/")
 def home():
-    """Renders the main page. Starts a fresh game if none exists yet."""
-    if "target" not in session:
-        start_new_game()
+    """Renders the main page. No game is started until the user picks a difficulty."""
+    has_active_game = "target" in session
     return render_template(
         "index.html",
-        attempts_left=session["attempts_left"],
-        history=session["history"],
-        game_over=session["game_over"],
-        min_number=MIN_NUMBER,
-        max_number=MAX_NUMBER,
+        has_active_game=has_active_game,
+        attempts_left=session.get("attempts_left"),
+        history=session.get("history", []),
+        game_over=session.get("game_over", False),
+        min_number=session.get("min_number"),
+        max_number=session.get("max_number"),
+        difficulties=DIFFICULTIES,
     )
 
 
@@ -47,9 +59,12 @@ def guess():
     except (TypeError, ValueError):
         return jsonify({"error": "Please enter a valid whole number."}), 400
 
-    if user_guess < MIN_NUMBER or user_guess > MAX_NUMBER:
+    min_number = session["min_number"]
+    max_number = session["max_number"]
+
+    if user_guess < min_number or user_guess > max_number:
         return jsonify({
-            "error": f"Please guess a number between {MIN_NUMBER} and {MAX_NUMBER}."
+            "error": f"Please guess a number between {min_number} and {max_number}."
         }), 400
 
     target = session["target"]
@@ -86,10 +101,15 @@ def guess():
 
 @app.route("/new_game", methods=["POST"])
 def new_game():
-    """Starts a brand new game (resets session state)."""
-    start_new_game()
+    """Starts a brand new game using the difficulty sent from the frontend."""
+    data = request.get_json(silent=True) or {}
+    difficulty = data.get("difficulty", session.get("difficulty", DEFAULT_DIFFICULTY))
+    start_new_game(difficulty)
     return jsonify({
-        "message": "New game started! Guess a number.",
+        "message": f"New game started on {DIFFICULTIES[session['difficulty']]['label']}! Guess a number.",
+        "difficulty": session["difficulty"],
+        "min_number": session["min_number"],
+        "max_number": session["max_number"],
         "attempts_left": session["attempts_left"],
         "game_over": False,
         "history": [],
