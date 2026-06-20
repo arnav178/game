@@ -10,18 +10,23 @@
   <div class="card">
 
     <!-- DIFFICULTY SCREEN: shown first, before any game has started -->
-    <div id="difficultyScreen" class="{{ 'hidden' if has_active_game else '' }}">
+    <div id="difficultyScreen" style="display: {{ 'none' if has_active_game else 'block' }};">
       <h1>🎯 Number Guessing Game</h1>
       <p class="subtitle">Choose a difficulty to begin.</p>
+      <p class="high-score-badge">🏆 High Score: <span id="highScoreDifficultyScreen">{{ high_score }}</span></p>
       <div class="difficulty-options">
+        {% set icons = {'easy': '🟢', 'medium': '🟡', 'hard': '🔴'} %}
         {% for key, d in difficulties.items() %}
-          <button class="difficulty-btn" data-difficulty="{{ key }}">{{ d.label }}</button>
+          <button class="difficulty-btn" data-difficulty="{{ key }}">
+            <span class="emoji">{{ icons[key] }}</span>
+            <span>{{ d.label }}</span>
+          </button>
         {% endfor %}
       </div>
     </div>
 
     <!-- GAME SCREEN: shown once a difficulty has been picked -->
-    <div id="gameScreen" class="{{ '' if has_active_game else 'hidden' }}">
+    <div id="gameScreen" data-active="{{ 'true' if has_active_game else 'false' }}" style="display: {{ 'block' if has_active_game else 'none' }};">
       <h1>🎯 Number Guessing Game</h1>
       <p class="subtitle" id="rangeText">
         {% if min_number and max_number %}
@@ -29,7 +34,20 @@
         {% endif %}
       </p>
 
-      <p>Attempts left: <span id="attempts">{{ attempts_left }}</span></p>
+      <div class="score-row">
+        <div class="score-box">
+          <span class="score-label">Score</span>
+          <span class="score-value" id="score">{{ score }}</span>
+        </div>
+        <div class="score-box">
+          <span class="score-label">High Score</span>
+          <span class="score-value" id="highScore">{{ high_score }}</span>
+        </div>
+        <div class="score-box">
+          <span class="score-label">Attempts</span>
+          <span class="score-value" id="attempts">{{ attempts_left }}</span>
+        </div>
+      </div>
 
       <div class="guess-row">
         <input type="number" id="guessInput" min="{{ min_number }}" max="{{ max_number }}" placeholder="Enter your guess">

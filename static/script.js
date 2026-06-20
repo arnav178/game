@@ -9,6 +9,9 @@ const messageEl = document.getElementById("message");
 const attemptsEl = document.getElementById("attempts");
 const historyEl = document.getElementById("history");
 const rangeText = document.getElementById("rangeText");
+const scoreEl = document.getElementById("score");
+const highScoreEl = document.getElementById("highScore");
+const highScoreDifficultyScreenEl = document.getElementById("highScoreDifficultyScreen");
 
 function renderHistory(history) {
   historyEl.innerHTML = "";
@@ -20,14 +23,33 @@ function renderHistory(history) {
   });
 }
 
+function updateScores(score, highScore) {
+  scoreEl.textContent = score;
+  highScoreEl.textContent = highScore;
+  highScoreDifficultyScreenEl.textContent = highScore;
+}
+
+function flashHighScore() {
+  highScoreEl.classList.add("pulse");
+  setTimeout(() => highScoreEl.classList.remove("pulse"), 900);
+}
+
 function showGameScreen() {
-  difficultyScreen.classList.add("hidden");
-  gameScreen.classList.remove("hidden");
+  difficultyScreen.style.display = "none";
+  gameScreen.style.display = "block";
 }
 
 function showDifficultyScreen() {
-  gameScreen.classList.add("hidden");
-  difficultyScreen.classList.remove("hidden");
+  gameScreen.style.display = "none";
+  difficultyScreen.style.display = "block";
+}
+
+// Enforce correct screen on first load, regardless of what the server rendered,
+// so a stale cache can never show both screens at once.
+if (gameScreen.dataset.active === "true") {
+  showGameScreen();
+} else {
+  showDifficultyScreen();
 }
 
 async function startNewGame(difficulty) {
@@ -44,6 +66,7 @@ async function startNewGame(difficulty) {
   guessInput.min = data.min_number;
   guessInput.max = data.max_number;
   renderHistory(data.history);
+  updateScores(data.score, data.high_score);
   guessInput.disabled = false;
   guessBtn.disabled = false;
   guessInput.value = "";
@@ -74,7 +97,12 @@ async function submitGuess() {
   messageEl.textContent = data.message;
   attemptsEl.textContent = data.attempts_left;
   renderHistory(data.history);
+  updateScores(data.score, data.high_score);
   guessInput.value = "";
+
+  if (data.new_high_score) {
+    flashHighScore();
+  }
 
   if (data.game_over) {
     guessInput.disabled = true;

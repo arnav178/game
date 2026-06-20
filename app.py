@@ -7,13 +7,25 @@ app = Flask(__name__)
 # In production, this comes from an environment variable (set on Render).
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 
-# Each difficulty defines its own range and attempt budget.
+# Each difficulty defines its own range, attempt budget, and a points multiplier
+# (harder difficulties are worth more points per remaining attempt).
 DIFFICULTIES = {
-    "easy":   {"min": 1, "max": 50,  "attempts": 10, "label": "Easy (1–50, 10 tries)"},
-    "medium": {"min": 1, "max": 100, "attempts": 7,  "label": "Medium (1–100, 7 tries)"},
-    "hard":   {"min": 1, "max": 200, "attempts": 6,  "label": "Hard (1–200, 6 tries)"},
+    "easy":   {"min": 1, "max": 50,  "attempts": 10, "label": "Easy (1–50, 10 tries)",  "multiplier": 10},
+    "medium": {"min": 1, "max": 100, "attempts": 7,  "label": "Medium (1–100, 7 tries)", "multiplier": 20},
+    "hard":   {"min": 1, "max": 200, "attempts": 6,  "label": "Hard (1–200, 6 tries)",   "multiplier": 35},
 }
 DEFAULT_DIFFICULTY = "medium"
+
+
+def calculate_score(difficulty, attempts_left_after_guess):
+    """
+    Points = (attempts remaining + 1) * difficulty multiplier.
+    Guessing correctly on the first try gives the maximum score for that
+    difficulty; using more attempts lowers the score, but a correct guess
+    always scores something.
+    """
+    multiplier = DIFFICULTIES[difficulty]["multiplier"]
+    return (attempts_left_after_guess + 1) * multiplier
 
 
 def start_new_game(difficulty):
@@ -28,7 +40,11 @@ def start_new_game(difficulty):
     session["target"] = random.randint(config["min"], config["max"])
     session["attempts_left"] = config["attempts"]
     session["game_over"] = False
-    session["history"] = []  # list of past guesses, for display
+    session["history"] = []          # list of past guesses, for display
+    session["score"] = 0             # score for the game currently in progress
+    # session["high_score"] is intentionally NOT reset here — it persists
+    # across games for as long as the browser keeps this session cookie.
+    session.setdefault("high_score", 0)
 
 
 @app.route("/")
@@ -44,6 +60,8 @@ def home():
         min_number=session.get("min_number"),
         max_number=session.get("max_number"),
         difficulties=DIFFICULTIES,
+        score=session.get("score", 0),
+        high_score=session.get("high_score", 0),
     )
 
 
@@ -68,14 +86,24 @@ def guess():
         }), 400
 
     target = session["target"]
+    difficulty = session["difficulty"]
     session["attempts_left"] -= 1
 
+    new_high_score = False
+
     if user_guess == target:
-        message = f"🎉 Correct! The number was {target}."
+        points = calculate_score(difficulty, session["attempts_left"])
+        session["score"] = points
+        if points > session.get("high_score", 0):
+            session["high_score"] = points
+            new_high_score = True
+        message = f"🎉 Correct! The number was {target}. You scored {points} points!"
+        if new_high_score:
+            message += " 🏆 New high score!"
         session["game_over"] = True
         result = "correct"
     elif session["attempts_left"] <= 0:
-        message = f"💀 Out of attempts! The number was {target}."
+        message = f"💀 Out of attempts! The number was {target}. Score: 0."
         session["game_over"] = True
         result = "lost"
     elif user_guess < target:
@@ -96,6 +124,9 @@ def guess():
         "attempts_left": session["attempts_left"],
         "game_over": session["game_over"],
         "history": session["history"],
+        "score": session["score"],
+        "high_score": session["high_score"],
+        "new_high_score": new_high_score,
     })
 
 
@@ -113,6 +144,8 @@ def new_game():
         "attempts_left": session["attempts_left"],
         "game_over": False,
         "history": [],
+        "score": session["score"],
+        "high_score": session["high_score"],
     })
 
 
